@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login-shell">
+  <form class="login-panel" method="post" action="/register">
+    <div class="login-brand">初始化账号</div>
+    <p class="muted">首次启动需要创建管理员账号。</p>
+    <label>
+      用户名
+      <input name="username" autocomplete="username" required>
+    </label>
+    <label>
+      密码
+      <input name="password" type="password" autocomplete="new-password" required>
+    </label>
+    <label>
+      确认密码
+      <input name="confirm" type="password" autocomplete="new-password" required>
+    </label>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <button class="button primary full" type="submit">创建账号</button>
+  </form>
+</section>
+{% endblock %}

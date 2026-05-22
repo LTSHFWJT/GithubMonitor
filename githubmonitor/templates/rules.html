@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set page_title = "规则配置" %}
+{% block content %}
+<section class="panel table-panel">
+  <div class="panel-head list-head">
+    <h2>规则列表</h2>
+    <label class="button primary" for="modal-rule">新增</label>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>名称</th><th>位置</th><th>严重级别</th><th>精确值</th><th>正则</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>
+      {% for rule in rules %}
+      <tr>
+        <td>{{ rule.id }}</td>
+        <td>{{ rule.name }}</td>
+        <td>{{ rule.part }}</td>
+        <td><span class="severity {{ rule.severity }}">{{ rule.severity|severity_label }}</span></td>
+        <td class="mono">{{ rule.match }}</td>
+        <td class="mono">{{ rule.regex }}</td>
+        <td><span class="badge {{ 'normal' if rule.enabled else 'disabled' }}">{{ "启用" if rule.enabled else "停用" }}</span></td>
+        <td class="actions">
+          <a class="button small" href="/rules/{{ rule.id }}/edit{{ page.query_string }}">编辑</a>
+          <form method="post" action="/rules/{{ rule.id }}/toggle{{ page.query_string }}"><button class="button small" type="submit">{{ "停用" if rule.enabled else "启用" }}</button></form>
+          <form method="post" action="/rules/{{ rule.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">暂无规则</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+
+<input class="modal-toggle" id="modal-rule" type="checkbox" {{ 'checked' if edit else '' }}>
+<div class="modal">
+  <label class="modal-backdrop" for="modal-rule"></label>
+  <form method="post" action="/rules{{ page.query_string }}" class="modal-panel wide task-form">
+    {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+    <div class="panel-head">
+      <h2>{{ "编辑规则" if edit else "新增规则" }}</h2>
+      <a class="modal-close" href="/rules{{ page.query_string }}">关闭</a>
+    </div>
+    <div class="form-grid form-grid-5">
+      <label>名称<input name="name" value="{{ edit.name if edit else '' }}" required></label>
+      <label>匹配位置
+        {% set part = edit.part if edit else 'contents' %}
+        <select name="part">
+          {% for value in ['contents', 'path', 'filename', 'extension'] %}
+          <option value="{{ value }}" {{ 'selected' if part == value else '' }}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>严重级别
+        {% set severity = edit.severity if edit else 'medium' %}
+        <select name="severity">
+          {% for value in ['low', 'medium', 'high', 'critical'] %}
+          <option value="{{ value }}" {{ 'selected' if severity == value else '' }}>{{ value|severity_label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>精确值<input name="match" value="{{ edit.match if edit else '' }}"></label>
+      <label>正则<input name="regex" value="{{ edit.regex if edit else '' }}"></label>
+    </div>
+    <div class="form-actions">
+      <button class="button primary" type="submit">保存</button>
+      <a class="button ghost" href="/rules{{ page.query_string }}">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

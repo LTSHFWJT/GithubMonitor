@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% set page_title = "任务队列" %}
+{% block content %}
+<section class="toolbar">
+  <form method="post" action="/jobs/enqueue"><button class="button" type="submit">入队到期任务</button></form>
+  <form method="post" action="/jobs/run"><button class="button primary" type="submit">执行队列</button></form>
+  <form method="post" action="/jobs/clear{{ page.query_string }}"><button class="button danger" type="submit">清理完成/失败</button></form>
+</section>
+
+<section class="panel table-panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>任务</th><th>关键词</th><th>状态</th><th>开始</th><th>结束</th><th>错误</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td>{{ job.id }}</td>
+        <td>{{ job.task_name or "-" }}</td>
+        <td class="mono">{{ job.keyword }}</td>
+        <td><span class="badge {{ job.status }}">{{ job.status|status_label }}</span></td>
+        <td>{{ job.started_at or "-" }}</td>
+        <td>{{ job.finished_at or "-" }}</td>
+        <td class="error-cell">{{ job.error or "-" }}</td>
+        <td class="actions">
+          <form method="post" action="/jobs/{{ job.id }}/retry{{ page.query_string }}"><button class="button small" type="submit">重试</button></form>
+          <form method="post" action="/jobs/{{ job.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty">暂无队列记录</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+{% endblock %}

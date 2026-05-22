@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "GitHub Monitor" }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  {% if user %}
+  <header class="app-header">
+    <a class="brand" href="/">GitHub Monitor</a>
+    <nav class="nav-main">
+      <a class="{{ 'active' if active == 'dashboard' else '' }}" href="/">应用概况</a>
+      <a class="{{ 'active' if active == 'findings' else '' }}" href="/findings">扫描结果</a>
+      <div class="dropdown">
+        <button class="nav-button {{ 'active' if active in ['tasks', 'jobs', 'tokens', 'whitelists', 'notifications', 'settings', 'rules'] else '' }}" type="button">配置中心</button>
+        <div class="dropdown-menu">
+          <a href="/tokens">令牌配置</a>
+          <a href="/tasks">任务配置</a>
+          <a href="/notifications">通知配置</a>
+          <a href="/whitelists">白名单配置</a>
+          <a href="/settings">系统设置</a>
+        </div>
+      </div>
+    </nav>
+    <div class="header-actions">
+      <div class="dropdown align-right">
+        <button class="nav-button" type="button">个人中心</button>
+        <div class="dropdown-menu">
+          <a href="/settings">账号设置</a>
+          <a href="/logout">退出登录</a>
+        </div>
+      </div>
+      <a class="button ghost" href="/mobile">访问移动版</a>
+    </div>
+  </header>
+  {% endif %}
+
+  <main class="{{ 'main' if user else 'auth-main' }}">
+    {% if user %}
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>{{ page_title }}</h1>
+        {% if page_subtitle %}<p>{{ page_subtitle }}</p>{% endif %}
+      </div>
+      <div class="topbar-side">
+        {% block topbar_actions %}
+        <span class="user">{{ user }}</span>
+        {% endblock %}
+      </div>
+    </header>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

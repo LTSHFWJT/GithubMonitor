@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% set page_title = "任务配置" %}
+{% block content %}
+<section class="toolbar">
+  <a class="button" href="/jobs">查看任务队列</a>
+  <label class="button" for="modal-keyword-help">关键字说明</label>
+</section>
+<section class="panel table-panel">
+  <div class="panel-head list-head">
+    <h2>任务列表</h2>
+    <label class="button primary" for="modal-task">新增</label>
+  </div>
+  <div class="table-wrap">
+  <table class="tasks-table">
+    <thead>
+      <tr><th>ID</th><th>任务</th><th>模式</th><th>页数</th><th>间隔</th><th>下次扫描</th><th>状态</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for task in tasks %}
+    <tr>
+      <td>{{ task.id }}</td>
+      <td>{{ task.name }}</td>
+      <td>{{ task.match_mode }}</td>
+      <td>{{ task.scan_pages }}</td>
+      <td>{{ task.scan_interval_min }} 分钟</td>
+      <td>{{ task.next_scan_at or "-" }}</td>
+      <td><span class="badge {{ 'normal' if task.enabled else 'disabled' }}">{{ "启用" if task.enabled else "停用" }}</span></td>
+      <td class="actions">
+        <a class="button small" href="/tasks/{{ task.id }}/edit{{ page.query_string }}">编辑</a>
+        <form method="post" action="/tasks/{{ task.id }}/run{{ page.query_string }}"><button class="button small primary" type="submit">扫描</button></form>
+        <form method="post" action="/tasks/{{ task.id }}/toggle{{ page.query_string }}"><button class="button small" type="submit">{{ "停用" if task.enabled else "启用" }}</button></form>
+        <form method="post" action="/tasks/{{ task.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="empty">暂无任务</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+
+<input class="modal-toggle" id="modal-task" type="checkbox" {{ 'checked' if edit else '' }}>
+<div class="modal">
+  <label class="modal-backdrop" for="modal-task"></label>
+  <form method="post" action="/tasks{{ page.query_string }}" class="modal-panel wide task-form">
+    {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+    <div class="panel-head">
+      <h2>{{ "编辑任务" if edit else "新增任务" }}</h2>
+      <a class="modal-close" href="/tasks{{ page.query_string }}">关闭</a>
+    </div>
+    <div class="form-grid">
+      <label>任务名<input name="name" value="{{ edit.name if edit else '' }}" required></label>
+      <label>匹配模式
+        <select name="match_mode">
+          {% set mode = edit.match_mode if edit else 'fuzzy' %}
+          <option value="fuzzy" {{ 'selected' if mode == 'fuzzy' else '' }}>模糊匹配</option>
+          <option value="exact" {{ 'selected' if mode == 'exact' else '' }}>精确匹配</option>
+          <option value="word" {{ 'selected' if mode == 'word' else '' }}>单词匹配</option>
+        </select>
+      </label>
+      <label>扫描页数<input name="scan_pages" type="number" min="1" max="20" value="{{ edit.scan_pages if edit else 3 }}"></label>
+      <label>间隔分钟<input name="scan_interval_min" type="number" min="1" value="{{ edit.scan_interval_min if edit else 60 }}"></label>
+      <label>存储策略
+        {% set store = edit.store_type if edit else 'file_once' %}
+        <select name="store_type">
+          <option value="all" {{ 'selected' if store == 'all' else '' }}>全部保存</option>
+          <option value="file_once" {{ 'selected' if store == 'file_once' else '' }}>同文件一次</option>
+          <option value="repo_once" {{ 'selected' if store == 'repo_once' else '' }}>同仓库一次</option>
+        </select>
+      </label>
+    </div>
+    <div class="field-block">
+      <div class="field-head">
+        <span>关键词</span>
+        <label class="button small" for="modal-keyword-help">关键字说明</label>
+      </div>
+      <textarea name="keywords" rows="5" required placeholder="一行一个关键字或 GitHub 搜索查询">{{ edit.keywords if edit else '' }}</textarea>
+    </div>
+    <div class="form-grid">
+      <label>忽略账号/组织<textarea name="ignore_owners" rows="4">{{ edit.ignore_owners if edit else '' }}</textarea></label>
+      <label>忽略仓库<textarea name="ignore_repos" rows="4">{{ edit.ignore_repos if edit else '' }}</textarea></label>
+    </div>
+    <div class="form-actions">
+      <button class="button primary" type="submit">保存</button>
+      <a class="button ghost" href="/tasks{{ page.query_string }}">取消</a>
+    </div>
+  </form>
+</div>
+
+<input class="modal-toggle" id="modal-keyword-help" type="checkbox">
+<div class="modal">
+  <label class="modal-backdrop" for="modal-keyword-help"></label>
+  <section class="modal-panel wide keyword-help">
+    <div class="panel-head">
+      <h2>关键字设置说明</h2>
+      <label class="modal-close" for="modal-keyword-help">关闭</label>
+    </div>
+    <p class="muted">当前扫描通过 GitHub REST API 的 Search code 接口执行；关键词区域支持批量配置，每行作为一次独立查询。</p>
+    <div class="help-grid">
+      <div class="help-row">
+        <strong>基础匹配</strong>
+        <code>secret_key</code>
+        <span>搜索文件内容中的普通关键字。</span>
+      </div>
+      <div class="help-row">
+        <strong>带空格短语</strong>
+        <code>"hello world"</code>
+        <span>短语、空格或特殊含义文本建议用双引号包裹。</span>
+      </div>
+      <div class="help-row">
+        <strong>同时包含</strong>
+        <code>mysql AND password</code>
+        <span>同时匹配多个词；空格分隔多个词通常也会缩小结果。</span>
+      </div>
+      <div class="help-row">
+        <strong>排除关键字</strong>
+        <code>mysql NOT localhost</code>
+        <span>匹配 mysql，但排除包含 localhost 的结果。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定仓库</strong>
+        <code>password repo:owner/repo</code>
+        <span>只扫描指定仓库；也可使用 <code>user:owner</code> 或 <code>org:orgname</code>。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定语言</strong>
+        <code>token language:python</code>
+        <span>按 GitHub Linguist 识别的语言过滤。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定路径</strong>
+        <code>password path:config</code>
+        <span>只匹配指定目录或路径下的代码。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定文件名</strong>
+        <code>DB_PASSWORD filename:.env</code>
+        <span>按文件名过滤，适合查找配置文件。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定扩展名</strong>
+        <code>private_key extension:pem</code>
+        <span>按文件扩展名过滤，不需要写点号。</span>
+      </div>
+      <div class="help-row">
+        <strong>限定大小</strong>
+        <code>secret size:&lt;10000</code>
+        <span>按文件字节大小过滤，可使用 <code>&gt;</code>、<code>&lt;</code> 或区间。</span>
+      </div>
+      <div class="help-row">
+        <strong>搜索范围</strong>
+        <code>token in:file,path</code>
+        <span>默认搜索文件内容；可用 <code>in:file</code>、<code>in:path</code> 或 <code>in:file,path</code>。</span>
+      </div>
+      <div class="help-row">
+        <strong>包含 Fork</strong>
+        <code>password fork:true</code>
+        <span>需要包含符合 GitHub 索引条件的 fork 仓库时使用。</span>
+      </div>
+    </div>
+    <div class="help-note">
+      <strong>限制</strong>
+      <span>查询必须包含至少一个搜索词；只搜索默认分支、可索引文件和小于 384 KB 的文件。REST 搜索查询超过 256 个字符或包含过多布尔操作符会被 GitHub 拒绝。</span>
+    </div>
+    <div class="help-note">
+      <strong>符号处理</strong>
+      <span>GitHub legacy code search 会忽略这些符号：<code>. , : ; / \ ` ' " = * ! ? # $ &amp; + ^ | ~ &lt; &gt; ( ) { } [ ] @</code>。如需查找带符号的完整片段，建议配合双引号、文件名、路径、语言等限定词缩小范围。</span>
+    </div>
+    <div class="help-note">
+      <strong>预览</strong>
+      <span>可在浏览器打开 <code>https://github.com/search?type=code&amp;q=URL编码后的关键字</code> 预览结果；本系统会保存 GitHub API 返回的 text-match 片段。</span>
+    </div>
+  </section>
+</div>
+{% endblock %}

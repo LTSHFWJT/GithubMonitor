@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set page_title = "应用概况" %}
+{% block content %}
+<section class="metrics-grid">
+  <div class="metric"><span>总风险</span><strong>{{ metrics.findings }}</strong></div>
+  <div class="metric warn"><span>待处理</span><strong>{{ metrics.pending }}</strong></div>
+  <div class="metric ok"><span>已解决</span><strong>{{ metrics.solved }}</strong></div>
+  <div class="metric warn"><span>异常</span><strong>{{ metrics.abnormal }}</strong></div>
+  <div class="metric"><span>任务</span><strong>{{ metrics.tasks }}</strong></div>
+  <div class="metric"><span>队列</span><strong>{{ metrics.queued }}</strong></div>
+  <div class="metric"><span>Token</span><strong>{{ metrics.tokens }}</strong></div>
+</section>
+
+<section class="toolbar">
+  <div class="quota">
+    <span>Code Search API 配额</span>
+    <strong>{{ token_quota.remaining }} / {{ token_quota.total }}</strong>
+  </div>
+  <form method="post" action="/jobs/enqueue"><button class="button" type="submit">入队到期任务</button></form>
+  <form method="post" action="/jobs/run"><button class="button primary" type="submit">执行队列</button></form>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h2>最近风险</h2><a href="/findings">全部</a></div>
+    <div class="table-wrap">
+    <table class="dashboard-compact-table recent-findings-table">
+      <thead><tr><th>仓库</th><th>文件</th><th>状态</th><th>规则</th></tr></thead>
+      <tbody>
+      {% for item in recent %}
+      <tr>
+        <td class="recent-preview-cell">
+          {% set repo_full = item.repo_owner ~ "/" ~ item.repo_name %}
+          <span class="repo-preview" tabindex="0">{{ repo_full }}</span>
+          <div class="repo-full" hidden>{{ repo_full }}</div>
+        </td>
+        <td class="recent-preview-cell">
+          <span class="mono file-preview" tabindex="0">{{ item.file_path }}</span>
+          <div class="file-full" hidden>{{ item.file_path }}</div>
+        </td>
+        <td><span class="badge {{ item.status }}">{{ item.status|status_label }}</span></td>
+        <td>{{ item.rule_name|rule_label }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">暂无扫描结果</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>最近任务</h2><a href="/tasks">配置</a></div>
+    <div class="table-wrap">
+    <table class="dashboard-compact-table recent-jobs-table">
+      <thead><tr><th>任务</th><th>关键词</th><th>状态</th><th>完成时间</th></tr></thead>
+      <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td class="recent-preview-cell">
+          <span class="text-preview" tabindex="0">{{ job.task_name or "-" }}</span>
+          <div class="text-full" hidden>{{ job.task_name or "-" }}</div>
+        </td>
+        <td class="recent-preview-cell">
+          <span class="mono text-preview" tabindex="0">{{ job.keyword }}</span>
+          <div class="text-full" hidden>{{ job.keyword }}</div>
+        </td>
+        <td><span class="badge {{ job.status }}">{{ job.status|status_label }}</span></td>
+        <td>{{ job.finished_at or "-" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">暂无队列记录</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+<script>
+  const dashboardHoverPopover = document.createElement('div');
+  dashboardHoverPopover.className = 'hover-popover';
+  dashboardHoverPopover.hidden = true;
+  document.body.appendChild(dashboardHoverPopover);
+
+  function positionDashboardPopover(target) {
+    const rect = target.getBoundingClientRect();
+    const margin = 12;
+    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - dashboardHoverPopover.offsetWidth - margin);
+    const below = rect.bottom + 8;
+    const above = rect.top - dashboardHoverPopover.offsetHeight - 8;
+    const top = below + dashboardHoverPopover.offsetHeight + margin <= window.innerHeight ? below : Math.max(margin, above);
+    dashboardHoverPopover.style.left = `${left}px`;
+    dashboardHoverPopover.style.top = `${top}px`;
+  }
+
+  function showDashboardPopover(preview) {
+    const full = preview.parentElement.querySelector('.repo-full, .file-full, .text-full');
+    const text = full ? full.textContent.trim() : '';
+    if (!text) return;
+    dashboardHoverPopover.textContent = text;
+    dashboardHoverPopover.hidden = false;
+    positionDashboardPopover(preview);
+  }
+
+  function hideDashboardPopover() {
+    dashboardHoverPopover.hidden = true;
+  }
+
+  document.querySelectorAll('.dashboard-compact-table .repo-preview, .dashboard-compact-table .file-preview, .dashboard-compact-table .text-preview').forEach(item => {
+    item.addEventListener('mouseenter', () => showDashboardPopover(item));
+    item.addEventListener('focus', () => showDashboardPopover(item));
+    item.addEventListener('mouseleave', hideDashboardPopover);
+    item.addEventListener('blur', hideDashboardPopover);
+  });
+</script>
+{% endblock %}

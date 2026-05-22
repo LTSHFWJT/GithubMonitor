@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% set page_title = "通知配置" %}
+{% block content %}
+<div id="notification-message" class="notice {{ message_type }}" {{ '' if message else 'hidden' }}>{{ message }}</div>
+<section class="notification-list">
+  {% for config in configs %}
+  <form class="panel notification-form" method="post" action="/notifications/{{ config.id }}{{ page.query_string }}">
+    <div class="panel-head">
+      <h2>{{ config.type|notification_label }}</h2>
+      <label class="switch"><input type="checkbox" name="enabled" value="1" {{ 'checked' if config.enabled else '' }}>启用</label>
+    </div>
+
+    {% if config.type == "email" %}
+    <div class="form-grid">
+      <label>加密方式
+        <select name="encryption">
+          {% for value in ["ssl", "tls", "none"] %}
+          <option value="{{ value }}" {{ 'selected' if config.settings.encryption == value else '' }}>{{ value|upper }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>SMTP 服务器<input name="host" value="{{ config.settings.host or '' }}" placeholder="smtp.qq.com"></label>
+      <label>端口<input name="port" type="number" min="1" value="{{ config.settings.port or 465 }}"></label>
+    </div>
+    <div class="form-grid">
+      <label>账号<input name="username" value="{{ config.settings.username or '' }}"></label>
+      <label>密码/授权码<input name="password" type="password" placeholder="{{ '已保存，留空不修改' if config.settings.has_password else '' }}"></label>
+      <label>发件人<input name="from" value="{{ config.settings.from or config.settings.username or '' }}"></label>
+    </div>
+    <label>接收邮箱<textarea name="to" rows="3" placeholder="支持多个邮箱，一行一个">{{ config.settings.to or '' }}</textarea></label>
+    {% elif config.type == "telegram" %}
+    <div class="form-grid">
+      <label>Bot Token<input name="token" type="password" placeholder="{{ '已保存，留空不修改' if config.settings.has_token else '' }}"></label>
+      <label>Chat ID<input name="chat_id" value="{{ config.settings.chat_id or '' }}"></label>
+    </div>
+    {% elif config.type == "webhook" %}
+    <label>Webhook 地址<input name="webhook" value="{{ config.settings.webhook or config.settings.url or '' }}"></label>
+    <label>请求头<textarea name="headers" rows="3" placeholder="User-Agent: GitHubMonitor">{{ config.settings.headers or '' }}</textarea></label>
+    <label>请求参数<textarea name="params" rows="5" placeholder="title: {{ '{{title}}' }}&#10;content: {{ '{{content}}' }}&#10;text.content: {{ '{{content}}' }}">{{ config.settings.params or '' }}</textarea></label>
+    {% elif config.type in ["dingtalk", "feishu"] %}
+    <label>Webhook 地址<input name="webhook" value="{{ config.settings.webhook or config.settings.url or '' }}"></label>
+    <label>签名 Secret<input name="secret" type="password" placeholder="{{ '已保存，留空不修改' if config.settings.has_secret else '未开启加签可留空' }}"></label>
+    {% elif config.type == "work_wechat" %}
+    <label>Webhook 地址<input name="webhook" value="{{ config.settings.webhook or config.settings.url or '' }}"></label>
+    {% endif %}
+
+    <div class="form-grid">
+      <label>通知间隔<input name="interval_min" type="number" min="1" value="{{ config.interval_min }}"></label>
+      <label>开始时间<input name="start_time" value="{{ config.start_time }}"></label>
+      <label>结束时间<input name="end_time" value="{{ config.end_time }}"></label>
+    </div>
+    <label>标题模板<input name="template_title" value="{{ config.template_title }}"></label>
+    <label>内容模板<textarea name="template_body" rows="3">{{ config.template_body }}</textarea></label>
+    <div class="form-actions">
+      <button class="button primary" type="submit">保存 {{ config.type|notification_label }}</button>
+      <button class="button notification-test" type="button" data-url="/notifications/{{ config.id }}/test{{ page.query_string }}">测试</button>
+    </div>
+  </form>
+  {% endfor %}
+</section>
+{% include "_pagination.html" %}
+<script>
+  const notificationMessage = document.getElementById('notification-message');
+  function showNotificationMessage(type, text) {
+    notificationMessage.hidden = false;
+    notificationMessage.className = `notice ${type}`;
+    notificationMessage.textContent = text;
+  }
+
+  document.querySelectorAll('.notification-test').forEach(button => {
+    button.addEventListener('click', async () => {
+      const form = button.closest('form');
+      const previousText = button.textContent;
+      button.disabled = true;
+      button.textContent = '测试中';
+      try {
+        const response = await fetch(button.dataset.url, {
+          method: 'POST',
+          body: new URLSearchParams(new FormData(form)),
+          headers: {Accept: 'application/json'},
+        });
+        const result = await response.json();
+        showNotificationMessage(result.success ? 'success' : 'error', result.message || '测试完成');
+      } catch (error) {
+        showNotificationMessage('error', error.message || '测试失败');
+      } finally {
+        button.disabled = false;
+        button.textContent = previousText;
+      }
+    });
+  });
+</script>
+{% endblock %}

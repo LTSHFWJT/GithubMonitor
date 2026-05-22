@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% set page_title = "系统设置" %}
+{% block content %}
+<section class="toolbar">
+  <a class="button" href="/rules">规则配置</a>
+</section>
+<section class="two-col settings-grid">
+  <form class="panel task-form" method="post" action="/profile">
+    <div class="panel-head"><h2>账号设置</h2></div>
+    <label>用户名<input name="username" value="{{ user }}" required></label>
+    <label>新密码<input name="password" type="password" placeholder="留空则不修改"></label>
+    <div class="form-actions"><button class="button primary" type="submit">保存账号</button></div>
+  </form>
+
+  <form class="panel task-form" method="post" action="/settings">
+    <div class="panel-head"><h2>系统配置</h2></div>
+    {% if message %}
+    <div class="notice {{ message_type }}">{{ message }}</div>
+    {% endif %}
+    <label>GitHub 代理地址<input name="proxy_url" value="{{ settings.proxy_url }}" placeholder="http://127.0.0.1:7890"></label>
+    <label class="inline-check"><input type="checkbox" name="save_fragments" value="1" {{ 'checked' if settings.save_fragments == '1' else '' }}>保存代码片段</label>
+    <label>通知标题模板<input name="notify_template_title" value="{{ settings.notify_template_title }}"></label>
+    <label>通知内容模板<textarea name="notify_template_body" rows="4">{{ settings.notify_template_body }}</textarea></label>
+    <div class="form-actions">
+      <button class="button primary" type="submit">保存设置</button>
+      <button class="button" type="submit" formmethod="post" formaction="/settings/test-proxy">测试代理</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

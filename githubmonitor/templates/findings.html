@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% set page_title = "扫描结果" %}
+{% block content %}
+<section class="toolbar">
+  <form method="get" action="/findings" class="filter-form">
+    <input type="hidden" name="per_page" value="{{ page.per_page }}">
+    <select name="status">
+      <option value="">全部状态</option>
+      {% for value in ['pending', 'false_positive', 'abnormal', 'solved'] %}
+      <option value="{{ value }}" {{ 'selected' if status == value else '' }}>{{ value|status_label }}</option>
+      {% endfor %}
+    </select>
+    <input name="search" value="{{ search }}" placeholder="仓库、文件、关键词、规则">
+    <button class="button" type="submit">筛选</button>
+  </form>
+</section>
+
+<section class="panel table-panel">
+  <form method="post" action="/findings/batch{{ page.query_string }}" class="batch-bar">
+    <input type="hidden" name="ids" id="batch-ids">
+    <select name="action">
+      <option value="solved">批量标记已解决</option>
+      <option value="false_positive">批量标记误报</option>
+      <option value="abnormal">批量标记异常</option>
+      <option value="pending">批量标记待处理</option>
+      <option value="delete">批量删除</option>
+    </select>
+    <button class="button" type="submit">应用</button>
+  </form>
+  <div class="table-wrap">
+    <table class="findings-table">
+      <colgroup>
+        <col class="select-col">
+        <col class="repo-col">
+        <col class="repo-desc-col">
+        <col class="file-col">
+        <col class="rule-col">
+        <col class="status-col">
+        <col class="fragment-col">
+        <col class="action-col">
+      </colgroup>
+      <thead>
+        <tr><th><input class="check-all" type="checkbox"></th><th>仓库</th><th>描述</th><th>文件</th><th>命中规则</th><th>状态</th><th>片段</th><th>处置</th></tr>
+      </thead>
+      <tbody>
+      {% for item in findings %}
+        <tr>
+          <td><input class="row-check" type="checkbox" value="{{ item.id }}"></td>
+          <td class="repo-cell">
+            {% set repo_full = item.repo_owner ~ "/" ~ item.repo_name %}
+            <a class="repo-preview" href="{{ item.repo_url }}" target="_blank" rel="noreferrer">{{ repo_full }}</a>
+            <div class="repo-full" hidden>{{ repo_full }}</div>
+          </td>
+          <td class="repo-desc-cell">
+            {% if item.repo_description %}
+            <span class="desc-preview" tabindex="0">{{ item.repo_description }}</span>
+            <div class="desc-full" hidden>{{ item.repo_description }}</div>
+            {% else %}
+            <span class="muted">-</span>
+            {% endif %}
+          </td>
+          <td class="file-cell">
+            <a class="mono file-preview" href="/findings/{{ item.id }}">{{ item.file_path }}</a>
+            <div class="file-full" hidden>{{ item.file_path }}</div>
+          </td>
+          <td><span class="severity {{ item.severity }}">{{ item.rule_name|rule_label }}</span></td>
+          <td><span class="badge {{ item.status }}">{{ item.status|status_label }}</span></td>
+          <td class="fragment-cell">
+            {% if item.fragment %}
+            <button class="fragment-preview" type="button">{{ item.fragment }}</button>
+            <div class="fragment-full" hidden>{{ item.fragment }}</div>
+            {% else %}
+            <span class="muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <form method="post" action="/findings/{{ item.id }}/update{{ page.query_string }}" class="compact-form">
+              <select name="status">
+                {% for value in ['pending', 'false_positive', 'abnormal', 'solved'] %}
+                <option value="{{ value }}" {{ 'selected' if item.status == value else '' }}>{{ value|status_label }}</option>
+                {% endfor %}
+              </select>
+              <input name="description" value="{{ item.description }}" placeholder="处置说明">
+              <button class="button small primary" type="submit">保存</button>
+            </form>
+            <div class="actions">
+              <a class="button small" href="{{ item.html_url }}" target="_blank" rel="noreferrer">GitHub</a>
+              <form method="post" action="/findings/{{ item.id }}/whitelist-repo{{ page.query_string }}"><button class="button small" type="submit">仓库加白</button></form>
+              <form method="post" action="/findings/{{ item.id }}/whitelist-file{{ page.query_string }}"><button class="button small" type="submit">文件加白</button></form>
+              <form method="post" action="/findings/{{ item.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="empty">暂无扫描结果</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+<script>
+  const batchIds = document.getElementById('batch-ids');
+  const checks = Array.from(document.querySelectorAll('.row-check'));
+  const all = document.querySelector('.check-all');
+  const hoverPopover = document.createElement('div');
+  hoverPopover.className = 'hover-popover';
+  hoverPopover.hidden = true;
+  document.body.appendChild(hoverPopover);
+
+  function positionHoverPopover(target) {
+    const rect = target.getBoundingClientRect();
+    const margin = 12;
+    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - hoverPopover.offsetWidth - margin);
+    const below = rect.bottom + 8;
+    const above = rect.top - hoverPopover.offsetHeight - 8;
+    const top = below + hoverPopover.offsetHeight + margin <= window.innerHeight ? below : Math.max(margin, above);
+    hoverPopover.style.left = `${left}px`;
+    hoverPopover.style.top = `${top}px`;
+  }
+
+  function showHoverPopover(preview) {
+    const full = preview.parentElement.querySelector('.fragment-full, .file-full, .desc-full, .repo-full');
+    const text = full ? full.textContent.trim() : '';
+    if (!text) return;
+    hoverPopover.textContent = text;
+    hoverPopover.hidden = false;
+    positionHoverPopover(preview);
+  }
+
+  function hideHoverPopover() {
+    hoverPopover.hidden = true;
+  }
+
+  function syncBatch() {
+    batchIds.value = checks.filter(item => item.checked).map(item => item.value).join(',');
+  }
+
+  checks.forEach(item => item.addEventListener('change', syncBatch));
+  document.querySelectorAll('.fragment-preview, .file-preview, .desc-preview, .repo-preview').forEach(item => {
+    item.addEventListener('mouseenter', () => showHoverPopover(item));
+    item.addEventListener('focus', () => showHoverPopover(item));
+    item.addEventListener('mouseleave', hideHoverPopover);
+    item.addEventListener('blur', hideHoverPopover);
+  });
+  if (all) {
+    all.addEventListener('change', () => {
+      checks.forEach(item => item.checked = all.checked);
+      syncBatch();
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% set page_title = "移动版扫描结果" %}
+{% block content %}
+<section class="toolbar mobile-toolbar">
+  <form method="get" action="/mobile" class="filter-form mobile-filter-form">
+    <input type="hidden" name="per_page" value="{{ page.per_page }}">
+    <select name="status">
+      <option value="">全部状态</option>
+      {% for value in ['pending', 'false_positive', 'abnormal', 'solved'] %}
+      <option value="{{ value }}" {{ 'selected' if status == value else '' }}>{{ value|status_label }}</option>
+      {% endfor %}
+    </select>
+    <input name="search" value="{{ search }}" placeholder="仓库、文件、关键词、规则">
+    <button class="button" type="submit">筛选</button>
+  </form>
+</section>
+
+<section class="mobile-list">
+  {% for item in findings %}
+  <article class="panel mobile-item">
+    <div class="mobile-item-head">
+      <a class="mobile-title" href="/findings/{{ item.id }}">{{ item.repo_owner }}/{{ item.repo_name }}</a>
+      <span class="badge {{ item.status }}">{{ item.status|status_label }}</span>
+    </div>
+    {% if item.repo_description %}
+    <p class="mobile-desc">{{ item.repo_description }}</p>
+    {% endif %}
+    <div class="mobile-meta">
+      <span>{{ item.rule_name|rule_label }}</span>
+      <span>{{ item.severity|severity_label }}</span>
+      <span>{{ item.task_name or "-" }}</span>
+    </div>
+    <p class="mono mobile-path">{{ item.file_path }}</p>
+    {% if item.fragment %}
+    <pre class="mobile-fragment">{{ item.fragment }}</pre>
+    {% endif %}
+    <form method="post" action="/findings/{{ item.id }}/update" class="mobile-disposition-form">
+      <input type="hidden" name="next" value="{{ page.current_url }}">
+      <select name="status">
+        {% for value in ['pending', 'false_positive', 'abnormal', 'solved'] %}
+        <option value="{{ value }}" {{ 'selected' if item.status == value else '' }}>{{ value|status_label }}</option>
+        {% endfor %}
+      </select>
+      <input name="description" value="{{ item.description }}" placeholder="处置说明">
+      <button class="button small primary" type="submit">保存</button>
+    </form>
+    <div class="actions mobile-actions">
+      <a class="button small" href="{{ item.html_url }}" target="_blank" rel="noreferrer">GitHub</a>
+      <a class="button small" href="/findings/{{ item.id }}">详情</a>
+      <form method="post" action="/findings/{{ item.id }}/whitelist-repo">
+        <input type="hidden" name="next" value="{{ page.current_url }}">
+        <button class="button small" type="submit">仓库加白</button>
+      </form>
+      <form method="post" action="/findings/{{ item.id }}/whitelist-file">
+        <input type="hidden" name="next" value="{{ page.current_url }}">
+        <button class="button small" type="submit">文件加白</button>
+      </form>
+      <form method="post" action="/findings/{{ item.id }}/delete">
+        <input type="hidden" name="next" value="{{ page.current_url }}">
+        <button class="button small danger" type="submit">删除</button>
+      </form>
+    </div>
+  </article>
+  {% else %}
+  <div class="panel empty">暂无扫描结果</div>
+  {% endfor %}
+</section>
+{% include "_pagination.html" %}
+{% endblock %}

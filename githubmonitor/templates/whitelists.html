@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set page_title = "白名单" %}
+{% block content %}
+<section class="panel table-panel">
+  <div class="panel-head list-head">
+    <h2>白名单列表</h2>
+    <label class="button primary" for="modal-whitelist">新增</label>
+  </div>
+  <div class="table-wrap">
+  <table class="whitelists-table">
+    <thead><tr><th>ID</th><th>类型</th><th>规则</th><th>原因</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for item in whitelists %}
+    <tr>
+      <td>{{ item.id }}</td>
+      <td>{{ item.type }}</td>
+      <td class="mono">{{ item.pattern }}</td>
+      <td>{{ item.reason }}</td>
+      <td><span class="badge {{ 'normal' if item.enabled else 'disabled' }}">{{ "启用" if item.enabled else "停用" }}</span></td>
+      <td class="actions">
+        <form method="post" action="/whitelists/{{ item.id }}/toggle{{ page.query_string }}"><button class="button small" type="submit">{{ "停用" if item.enabled else "启用" }}</button></form>
+        <form method="post" action="/whitelists/{{ item.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">暂无白名单</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+
+<input class="modal-toggle" id="modal-whitelist" type="checkbox">
+<div class="modal">
+  <label class="modal-backdrop" for="modal-whitelist"></label>
+  <form class="modal-panel task-form" method="post" action="/whitelists?per_page={{ page.per_page }}">
+    <div class="panel-head">
+      <h2>新增白名单</h2>
+      <label class="modal-close" for="modal-whitelist">关闭</label>
+    </div>
+    <label>类型
+      <select name="type">
+        <option value="repo">仓库 owner/repo</option>
+        <option value="owner">账号/组织</option>
+        <option value="path">路径</option>
+        <option value="filename">文件名</option>
+        <option value="value">片段包含值</option>
+      </select>
+    </label>
+    <label>规则<input name="pattern" placeholder="example-org/*" required></label>
+    <label>原因<input name="reason"></label>
+    <div class="form-actions"><button class="button primary" type="submit">保存</button></div>
+  </form>
+</div>
+{% endblock %}

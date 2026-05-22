@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% set page_title = "风险详情" %}
+{% set page_subtitle = finding.repo_owner ~ "/" ~ finding.repo_name %}
+{% block topbar_actions %}
+<div class="detail-header-actions">
+  <form method="post" action="/findings/{{ finding.id }}/update" class="detail-disposition-form header-disposition-form detail-async-form">
+    <input type="hidden" name="next" value="/findings/{{ finding.id }}">
+    <label>
+      <span class="sr-only">状态</span>
+      <select name="status">
+        {% for value in ['pending', 'false_positive', 'abnormal', 'solved'] %}
+        <option value="{{ value }}" {{ 'selected' if finding.status == value else '' }}>{{ value|status_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span class="sr-only">处置说明</span>
+      <input name="description" value="{{ finding.description }}" placeholder="处置说明">
+    </label>
+    <button class="button primary" type="submit">保存</button>
+  </form>
+  <div class="actions detail-disposition-actions header-disposition-actions">
+    <a class="button" href="{{ finding.html_url }}" target="_blank" rel="noreferrer">GitHub</a>
+    <form method="post" action="/findings/{{ finding.id }}/whitelist-repo" class="detail-async-form">
+      <input type="hidden" name="next" value="/findings/{{ finding.id }}">
+      <button class="button" type="submit">仓库加白</button>
+    </form>
+    <form method="post" action="/findings/{{ finding.id }}/whitelist-file" class="detail-async-form">
+      <input type="hidden" name="next" value="/findings/{{ finding.id }}">
+      <button class="button" type="submit">文件加白</button>
+    </form>
+    <form method="post" action="/findings/{{ finding.id }}/delete">
+      <input type="hidden" name="next" value="/findings">
+      <button class="button danger" type="submit">删除</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="detail-message" class="notice info detail-message" hidden></div>
+<section class="panel detail-grid">
+  <div><span>任务</span><strong>{{ finding.task_name or "-" }}</strong></div>
+  <div><span>关键词</span><strong>{{ finding.keyword }}</strong></div>
+  <div><span>规则</span><strong>{{ finding.rule_name|rule_label }}</strong></div>
+  <div><span>严重级别</span><strong>{{ finding.severity|severity_label }}</strong></div>
+  <div><span>状态</span><strong id="detail-status">{{ finding.status|status_label }}</strong></div>
+  <div><span>处理人</span><strong id="detail-handler">{{ finding.handler or "-" }}</strong></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>文件信息</h2></div>
+	  <p><a href="{{ finding.repo_url }}" target="_blank" rel="noreferrer">{{ finding.repo_url }}</a></p>
+  {% if finding.repo_description %}<p>{{ finding.repo_description }}</p>{% endif %}
+	  <p><a class="mono" href="{{ finding.html_url }}" target="_blank" rel="noreferrer">{{ finding.file_path }}</a></p>
+  <p class="mono">{{ finding.blob_sha }}</p>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>代码片段</h2></div>
+  {% for fragment in fragments %}
+  <pre class="detail-fragment">{{ fragment.content }}</pre>
+  {% else %}
+  <div class="empty">未保存片段</div>
+  {% endfor %}
+</section>
+<script>
+  const detailMessage = document.getElementById('detail-message');
+  const detailStatus = document.getElementById('detail-status');
+  const detailHandler = document.getElementById('detail-handler');
+
+  function showDetailMessage(type, text) {
+    detailMessage.hidden = false;
+    detailMessage.className = `notice ${type} detail-message`;
+    detailMessage.textContent = text;
+  }
+
+  async function submitDetailForm(form) {
+    const submitButton = form.querySelector('button[type="submit"]');
+    const previousText = submitButton ? submitButton.textContent : '';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = '处理中';
+    }
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new URLSearchParams(new FormData(form)),
+        headers: {Accept: 'application/json'},
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || '操作失败');
+      }
+      if (result.status_label) {
+        detailStatus.textContent = result.status_label;
+      }
+      if (result.handler) {
+        detailHandler.textContent = result.handler;
+      }
+      showDetailMessage('success', result.message || '操作成功');
+    } catch (error) {
+      showDetailMessage('error', error.message || '操作失败');
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = previousText;
+      }
+    }
+  }
+
+  document.querySelectorAll('.detail-async-form').forEach(form => {
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      submitDetailForm(form);
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% if page %}
+<div class="pagination">
+  <div class="page-size">
+    <span>每页</span>
+    <select aria-label="每页数量" onchange="if (this.value) window.location.href = this.value">
+      {% for item in page.size_links %}
+      <option value="{{ item.url }}" {{ 'selected' if item.size == page.per_page else '' }}>{{ item.size }}</option>
+      {% endfor %}
+    </select>
+    <span>条</span>
+  </div>
+  <div class="page-nav">
+    <a class="button small {{ 'disabled' if page.page <= 1 else '' }}" href="{{ page.prev_url }}">上一页</a>
+    <span>第 {{ page.page }} / {{ page.pages }} 页，共 {{ page.total }} 条</span>
+    <a class="button small {{ 'disabled' if page.page >= page.pages else '' }}" href="{{ page.next_url }}">下一页</a>
+  </div>
+</div>
+{% endif %}

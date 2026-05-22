@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% set page_title = "Token 配置" %}
+{% block content %}
+<section class="panel table-panel">
+  <div class="panel-head list-head">
+    <h2>令牌列表</h2>
+    <label class="button primary" for="modal-token">新增</label>
+  </div>
+  {% if message %}
+  <div class="notice {{ message_type }}">{{ message }}</div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="tokens-table">
+    <thead>
+      <tr><th>ID</th><th>名称</th><th>状态</th><th>配额</th><th>重置时间</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+    {% for token in tokens %}
+    <tr>
+      <td>{{ token.id }}</td>
+      <td>{{ token.name or "-" }}</td>
+      <td><span class="badge {{ token.status }}">{{ token.status|status_label }}</span></td>
+      <td>
+        <div class="quota-progress">
+          <div style="width: {{ token.quota_percent }}%">
+            <span>{{ token.api_remaining }} / {{ token.api_limit }}</span>
+          </div>
+        </div>
+      </td>
+      <td>{{ token.api_reset_at or "-" }}</td>
+      <td class="actions">
+        <form method="post" action="/tokens/{{ token.id }}/test{{ page.query_string }}"><button class="button small" type="submit">测试</button></form>
+        <form method="post" action="/tokens/{{ token.id }}/delete{{ page.query_string }}"><button class="button small danger" type="submit">删除</button></form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="empty">请先添加 GitHub Token</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% include "_pagination.html" %}
+</section>
+
+<input class="modal-toggle" id="modal-token" type="checkbox">
+<div class="modal">
+  <label class="modal-backdrop" for="modal-token"></label>
+  <form class="modal-panel task-form" method="post" action="/tokens?per_page={{ page.per_page }}">
+    <div class="panel-head">
+      <h2>新增令牌</h2>
+      <label class="modal-close" for="modal-token">关闭</label>
+    </div>
+    <label>名称<input name="name" placeholder="security token"></label>
+    <label>GitHub Token<input name="token" placeholder="ghp_..." required></label>
+    <div class="form-actions"><button class="button primary" type="submit">保存</button></div>
+  </form>
+</div>
+{% endblock %}

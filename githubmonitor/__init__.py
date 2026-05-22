@@ -1,0 +1,1 @@
+"""GitHub Monitor application package."""
