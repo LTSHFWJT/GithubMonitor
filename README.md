@@ -1,6 +1,6 @@
 # GitHub Monitor
 
-基于 `FastAPI + Jinja2 + SQLite` 的 GitHub 仓库泄露监控程序。功能设计以 `selfproject/code6` 为业务蓝本，吸收了 `Github-Monitor` 的任务匹配模式和 `shhgit` 的规则检测思路。
+基于 `FastAPI + Jinja2 + SQLite` 的 GitHub 仓库泄露监控程序。
 
 ## 功能
 
